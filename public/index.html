@@ -2,17 +2,119 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Controle de Frota - Linha Amarela</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISA - Controle de Frota</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com">
 </head>
-<body class="bg-slate-100 p-8">
-    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-4 text-blue-600">🚜 Cadastro de Máquina</h1>
-        <form id="frotaForm" class="space-y-4">
-            <input type="text" id="numero_frota" placeholder="Prefixo (Ex: EX-01)" class="w-full p-2 border rounded">
-            <input type="text" id="tipo" placeholder="Tipo (Ex: Escavadeira)" class="w-full p-2 border rounded">
-            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Cadastrar no Sistema</button>
-        </form>
+<body class="bg-slate-100 font-sans">
+
+    <!-- Cabeçalho -->
+    <nav class="bg-blue-700 p-4 text-white shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold"><i class="fas fa-tractor mr-2"></i> Controle de Frota - Linha Amarela</h1>
+            <span class="text-sm bg-blue-800 px-3 py-1 rounded-full text-green-400">● Sistema Online</span>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Formulário de Cadastro -->
+        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-500">
+            <h2 class="text-lg font-semibold mb-4 text-slate-700 border-b pb-2">
+                <i class="fas fa-plus-circle mr-2 text-blue-500"></i> Cadastrar Nova Máquina
+            </h2>
+            <form id="formEquipamento" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">Número da Frota (Prefixo)</label>
+                    <input type="text" id="numero_frota" placeholder="Ex: EX-01 ou PC-200" required
+                        class="w-full mt-1 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">Tipo de Equipamento</label>
+                    <select id="tipo" class="w-full mt-1 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="Escavadeira">Escavadeira</option>
+                        <option value="Pá Carregadeira">Pá Carregadeira</option>
+                        <option value="Retroescavadeira">Retroescavadeira</option>
+                        <option value="Motoniveladora">Motoniveladora</option>
+                        <option value="Rolo Compactador">Rolo Compactador</option>
+                        <option value="Trator de Esteira">Trator de Esteira</option>
+                    </select>
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-600 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition duration-300 shadow-lg">
+                    CADASTRAR NO SISTEMA
+                </button>
+            </form>
+            <div id="mensagem" class="mt-4 text-sm font-medium"></div>
+        </div>
+
+        <!-- Lista de Frota (Resumo) -->
+        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-slate-500">
+            <h2 class="text-lg font-semibold mb-4 text-slate-700 border-b pb-2">
+                <i class="fas fa-list mr-2 text-slate-500"></i> Equipamentos Ativos
+            </h2>
+            <div id="listaFrota" class="space-y-3">
+                <p class="text-slate-400 italic text-sm">Carregando frota do banco de dados...</p>
+            </div>
+        </div>
+
     </div>
+
+    <!-- Script para enviar dados para o servidor -->
+    <script>
+        // Função para cadastrar
+        document.getElementById('formEquipamento').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dados = {
+                numero_frota: document.getElementById('numero_frota').value,
+                tipo: document.getElementById('tipo').value,
+                contrato_id: 1 // Temporário para teste
+            };
+
+            try {
+                const response = await fetch('/equipamento', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+                const result = await response.json();
+                document.getElementById('mensagem').innerText = result.mensagem;
+                document.getElementById('mensagem').className = "mt-4 text-sm font-medium text-green-600";
+                carregarFrota();
+            } catch (err) {
+                document.getElementById('mensagem').innerText = "Erro ao conectar com o servidor.";
+                document.getElementById('mensagem').className = "mt-4 text-sm font-medium text-red-600";
+            }
+        });
+
+        // Função para listar a frota
+        async function carregarFrota() {
+            const response = await fetch('/frota');
+            const frota = await response.json();
+            const lista = document.getElementById('listaFrota');
+            lista.innerHTML = "";
+            
+            if(frota.length === 0) {
+                lista.innerHTML = "<p class='text-slate-400 italic text-sm'>Nenhuma máquina cadastrada.</p>";
+                return;
+            }
+
+            frota.forEach(maquina => {
+                lista.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded border border-slate-200">
+                        <div>
+                            <span class="font-bold text-blue-700">${maquina.numero_frota}</span>
+                            <p class="text-xs text-slate-500 uppercase font-semibold">${maquina.tipo}</p>
+                        </div>
+                        <span class="text-xs font-bold text-green-600"><i class="fas fa-check-circle mr-1"></i> ATIVO</span>
+                    </div>
+                `;
+            });
+        }
+
+        // Carrega ao abrir a página
+        carregarFrota();
+    </script>
 </body>
 </html>
